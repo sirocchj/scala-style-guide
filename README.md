@@ -86,6 +86,12 @@ We mostly follow Java's and Scala's standard naming conventions.
     val DEFAULT_PORT = 10000
   }
   ```
+  __JS: don't agree__, believe should be CamelCase with first letter capitalized.
+  ```scala
+  object Configuration {
+    val DefaultPort = 10000
+  }
+  ```
 
 - Enums should be CamelCase with first letter capitalized.
 
@@ -98,6 +104,7 @@ We mostly follow Java's and Scala's standard naming conventions.
 ### <a name='linelength'>Line Length</a>
 
 - Limit lines to 100 characters.
+  __JS: don't agree__, 120 should be fine
 - The only exceptions are import statements and URLs (although even for those, try to keep them under 100 chars).
 
 
@@ -108,7 +115,9 @@ We mostly follow Java's and Scala's standard naming conventions.
 In general: 
 
 - A method should contain less than 30 lines of code.
+  __JS: don't agree__, in principle __way__ less
 - A class should contain less than 30 methods.
+  __JS: don't agree__, same as above
 
 
 ### <a name='indent'>Spacing and Indentation</a>
@@ -141,6 +150,16 @@ In general:
     // function body
   }
   ```
+  __JS: don't agree__, with a 120 width limit, believe should be
+  ```scala
+  def lessContrivedSig[K, V, F](path: String,
+                                fClass: Class[F],
+                                kClass: Class[K],
+                                vClass: Class[V],
+                                conf: Configuration = hadoopConfiguration): RDD[(K, V)] = {
+    // function body
+  }
+  ```
   
 - For classes whose header doesn't fit in a single line, put the extend on the next line with 2 space indent, and add a blank line after class header.
   ```scala
@@ -152,6 +171,17 @@ In general:
     with Logging {
     
     def firstMethod(): Unit = { ... }  // blank line above
+  }
+  ```
+  __JS: agree__, but given the above, it should be
+  ```scala
+  class Foo(val param1: String,
+            val param2: String,
+            val param3: Array[Byte])
+    extends FooInterface
+    with Logging {
+
+    def firstMethod(): Unit = { ... }
   }
   ```
 
@@ -287,7 +317,7 @@ class DataFrame {
 ```
 
 Of course, the situation in which a class grows this long is strongly discouraged, and is generally reserved only for building certain public APIs.
-
+__JS: IMO only statement that adds value__, avoid such massive classes at all cost
 
 ### <a name='imports'>Imports</a>
 
@@ -311,7 +341,14 @@ Of course, the situation in which a class grows this long is strongly discourage
   _______ blank line _______
   com.databricks  // or org.apache.spark if you are working on Spark
   ```
-
+  __JS: don't agree__, Intellij's defaults are more reasonable, 5 imports before wildcards (and single line imports until then), then:
+  ```
+  java
+  _______ blank line _______
+  all other imports
+  _______ blank line _______
+  scala
+  ```
 
 ### <a name='pattern-matching'>Pattern Matching</a>
 
@@ -335,6 +372,7 @@ Of course, the situation in which a class grows this long is strongly discourage
     case b: Bar =>  ...
   }
   ```
+  __JS: not opinionated__ but would recommend always second approach
  
 
 ### <a name='infix'>Infix Methods</a>
@@ -352,6 +390,15 @@ string contains "foo"
 // But overloaded operators should be invoked in infix style
 arrayBuffer += elem
 ```
+__JS: don't agree__, there are plenty of places, outside of operators, where the infix notation not only makes sense but it is actually much more readable, e.g:
+```scala
+// correct
+val range = 1 to 10
+
+// awful
+val range = 1.to(10)
+```
+Rules such as operator's precedence should be known and used accordingly and, in general infix notation allowed where it improves code readability (which is, by definition, opinionated).
 
 
 ## <a name='lang'>Scala Language Features</a>
@@ -399,6 +446,7 @@ def inc(): Int = {
 print(inc())
 ```
 in the above code, `inc()` is passed into `print` as a closure and is only executed (twice) in the print method, rather than being passed in as a value `1`. The main problem with call-by-name is that the caller cannot differentiate between call-by-name and call-by-value, and thus cannot know for sure whether the expression will be executed or not (or maybe worse, multiple times). This is especially dangerous for expressions that have side-effect.
+__JS: don't agree__, while in principle all this is very true, the caller __must__ know whether is a call-by-name or call-by-value (it is sufficient it examines the method signature). The Function0 approach makes the caller have to care about explicit construction of a lambda, which is totally avoidable. Furthermore, from the caller's perspective he still does not know whether his function will be called 0, 1 or n times. Note also that the inc() function does not re-assign a + 1 to a, effectively making the print always print 0 and then 1.
 
 
 ### <a name='multi-param-list'>Multiple Parameter Lists</a>
@@ -411,7 +459,18 @@ case class Person(name: String, age: Int)(secret: String)
 ```
 
 One notable exception is the use of a 2nd parameter list for implicits when defining low-level libraries. That said, [implicits should be avoided](#implicits)!
+__JS: strongly disagree__. Parameter lists are extremely useful, e.g. when constructing fixtures for tests
+```scala
+class MyFixtureType(host: String, port: Int)
+def withFixture[A](host: String, port: Int)(f: MyType => A): A = {
+  val fixture = new MyFixtureType(host, port)
+  f(fixture)
+}
 
+"A MyFixtureType" should "behave well" in withFixture("localhost", 1234) { fixture =>
+  // do something w/ it
+}
+```
 
 ### <a name='symbolic_methods'>Symbolic Methods (Operator Overloading)</a>
 
@@ -425,7 +484,7 @@ stream1 >>= stream2
 channel.send(msg)
 stream1.join(stream2)
 ```
-
+__JS: don't agree__, symbolic method names in well-defined APIs are totally acceptable (the Akka example stands above all). When designing our own internal libs there may well be cases where a symbolic operator can be used to represent a method or a class. It is mandatory, however, that when defining a method with a symbol(s) an equivalent "wordy" method is defined too. Actually, it would be best if the symbolic method name is just an alias for the "wordy" version.
 
 ### <a name='type_inference'>Type Inference</a>
 
@@ -461,6 +520,7 @@ However, there are a few cases where `return` is preferred.
     // do something ...
   }
   ```
+  __JS: don't agree__, do not use return like... ever
 
 - Use `return` to terminate a loop early, rather than constructing status flags
   ```scala
@@ -470,6 +530,7 @@ However, there are a few cases where `return` is preferred.
     }
   }
   ```
+  __JS: don't agree__, do not use return. If you really need this, please consider using breakable, from scala.util.control.Breaks._
 
 ### <a name='recursion'>Recursion and Tail Recursion</a>
 
@@ -504,7 +565,7 @@ def max(data: Array[Int]): Int = {
   max
 }
 ```
-
+__JS: don't agree__. This is very opinionated, I personally find both equally readable. It may take a while to get used to the @tailrec versions but I would not restrict the choice.
 
 ### <a name='implicits'>Implicits</a>
 
@@ -545,6 +606,7 @@ object ImplicitHolder {
   }
   ```
   This ensures that we do not catch `NonLocalReturnControl` (as explained in [Return Statements](#return-statements)).
+  __JS: agree__, but consider using scala.util.control.Exception._
 
 - Do NOT use `Try` in APIs, i.e. do NOT return Try in any methods.Prefer explicitly throwing exceptions for abnormal execution and Java style try/catch for exception handling.
 
@@ -570,7 +632,7 @@ object ImplicitHolder {
   }
   ```
   The 2nd one makes it very obvious error cases the caller needs to handle.
-
+  __JS: do not agree__, Providing a library that throws exceptions on some/all accessible methods forces the caller to invest time in wrapping those into a type-safe version of the class itself or, worse, in polluting its code with try/catch blocks. I would advice that many times it is best to design a proper ADT.
 
 ### <a name='option'>Options</a>
 
@@ -623,7 +685,13 @@ def getAddress(name: String): Option[String] = {
 }
 
 ```
-
+__JS: don't agree__, prefer for-comprehensions were applicable but monadic chaining does not add/subtract code readability. I would argue that the initial example is equally readable as:
+get the instance from the db, might not be there, if is get the address, might not be there or be a Some(null) (argh!!), if it's there wrap into Option and flatten the nested Options on the way (using flatMap).
+flatMap is your friend...
+```scala
+Option(23).map(x => Option(x + 1).map(y => Option(y + 1)).flatten).flatten //equivalent to
+Option(23).flatMap(x => Option(x + 1)).flatMap(y => Option(y + 1))
+```
 
 ## <a name='concurrency'>Concurrency</a>
 
